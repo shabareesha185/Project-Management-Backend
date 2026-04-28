@@ -1,5 +1,5 @@
 import { body } from "express-validator";
-import { AvailableUserRole } from "../utils/constants.js";
+import { AvailableUserRole } from "../utils/constant.js";
 const userRegisterValidator = () => {
   return [
     body("email")
