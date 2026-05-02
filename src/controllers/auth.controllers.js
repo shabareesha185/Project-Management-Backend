@@ -2,7 +2,12 @@ import { User } from "../models/user.model.js";
 import { ApiResponce } from "../utils/api-responce.js";
 import { ApiError } from "../utils/api-erro.js";
 import { asyncHandler } from "../utils/async-handler.js";
-import { emailVerificationMailgenContent, sendEmail } from "../utils/mail.js";
+import {
+  forgotPasswordMailgenContent,
+  emailVerificationMailgenContent,
+  sendEmail,
+} from "../utils/mail.js";
+import jsw from "jsonwebtoken";
 
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -213,7 +218,7 @@ const resendEmailVerification = asyncHandler(async (req, res) => {
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRefreshToken =
-    req.cookies.refreshToken || req.body.refreshToken;
+    req.cookies.RefreshToken || req.body.refreshToken;
 
   if (!incomingRefreshToken) {
     throw new ApiError(401, "Unauthorized access");
@@ -247,8 +252,8 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
     return res
       .status(200)
-      .cookie("accessToken", accessToken, options)
-      .cookie("refreshToken", newRefreshToken, options)
+      .cookie("AccessToken", accessToken, options)
+      .cookie("RefreshToken", newRefreshToken, options)
       .json(
         new ApiResponse(
           200,
