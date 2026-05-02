@@ -7,7 +7,8 @@ import {
   emailVerificationMailgenContent,
   sendEmail,
 } from "../utils/mail.js";
-import jsw from "jsonwebtoken";
+import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -91,7 +92,7 @@ const loginUser = asyncHandler(async (req, res) => {
   });
   if (!user) throw new ApiError(400, "user does not exists");
 
-  const isPasswordCorrect = user.isPasswordCorrect(password);
+  const isPasswordCorrect = await user.isPasswordCorrect(password);
   if (!isPasswordCorrect) throw new ApiError(400, "Invalid Password");
 
   const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
@@ -167,6 +168,10 @@ const verifyEmail = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Token is invalid or expired");
   }
 
+  if (user.isEmailVerified) {
+    throw new ApiError(409, "Email is already verified");
+  }
+
   user.emailVerificationToken = undefined;
   user.emailVerificationExpiry = undefined;
 
@@ -174,7 +179,7 @@ const verifyEmail = asyncHandler(async (req, res) => {
   await user.save({ validateBeforeSave: false });
 
   return res.status(200).json(
-    new ApiResponse(
+    new ApiResponce(
       200,
       {
         isEmailVerified: true,
@@ -213,57 +218,53 @@ const resendEmailVerification = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, {}, "Mail has been sent to your email ID"));
+    .json(new ApiResponce(200, {}, "Mail has been sent to your email ID"));
 });
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRefreshToken =
-    req.cookies.RefreshToken || req.body.refreshToken;
+    req.cookies.RefreshToken || req.body.RefreshToken;
 
   if (!incomingRefreshToken) {
     throw new ApiError(401, "Unauthorized access");
   }
 
-  try {
-    const decodedToken = jwt.verify(
-      incomingRefreshToken,
-      process.env.REFRESH_TOKEN_SECRET,
-    );
+  const decodedToken = jwt.verify(
+    incomingRefreshToken,
+    process.env.REFRESH_TOKEN_SECRET,
+  );
 
-    const user = await User.findById(decodedToken?._id);
-    if (!user) {
-      throw new ApiError(401, "Invalid refresh token");
-    }
-
-    if (incomingRefreshToken !== user?.refreshToken) {
-      throw new ApiError(401, "Refresh token in expired");
-    }
-
-    const options = {
-      httpOnly: true,
-      secure: true,
-    };
-
-    const { accessToken, refreshToken: newRefreshToken } =
-      await generateAccessAndRefreshTokens(user._id);
-
-    user.refreshToken = newRefreshToken;
-    await user.save();
-
-    return res
-      .status(200)
-      .cookie("AccessToken", accessToken, options)
-      .cookie("RefreshToken", newRefreshToken, options)
-      .json(
-        new ApiResponse(
-          200,
-          { accessToken, refreshToken: newRefreshToken },
-          "Access token refreshed",
-        ),
-      );
-  } catch (error) {
+  const user = await User.findById(decodedToken?._id);
+  if (!user) {
     throw new ApiError(401, "Invalid refresh token");
   }
+
+  if (incomingRefreshToken !== user?.refreshToken) {
+    throw new ApiError(401, "Refresh token in expired");
+  }
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  const { accessToken, refreshToken: newRefreshToken } =
+    await generateAccessAndRefreshTokens(user._id);
+
+  user.refreshToken = newRefreshToken;
+  await user.save();
+
+  return res
+    .status(200)
+    .cookie("AccessToken", accessToken, options)
+    .cookie("RefreshToken", newRefreshToken, options)
+    .json(
+      new ApiResponce(
+        200,
+        { accessToken, refreshToken: newRefreshToken },
+        "Access token refreshed",
+      ),
+    );
 });
 
 const forgotPasswordRequest = asyncHandler(async (req, res) => {
@@ -295,7 +296,7 @@ const forgotPasswordRequest = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(
-      new ApiResponse(
+      new ApiResponce(
         200,
         {},
         "Password reset mail has been sent on your mail id",
@@ -329,7 +330,7 @@ const resetForgotPassword = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, {}, "Password reset successfully"));
+    .json(new ApiResponce(200, {}, "Password reset successfully"));
 });
 
 const changeCurrentPassword = asyncHandler(async (req, res) => {
@@ -348,7 +349,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, {}, "Password changed successfully"));
+    .json(new ApiResponce(200, {}, "Password changed successfully"));
 });
 
 export {
