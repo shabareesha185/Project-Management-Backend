@@ -45,9 +45,9 @@ router
     userChangeCurrentPasswordValidator(),
     validate,
     changeCurrentPassword,
-  );
+  ); // verified
 router
-  .route("/resend-email-verification") // verified
-  .post(verifyJWT, resendEmailVerification);
+  .route("/resend-email-verification")
+  .post(verifyJWT, resendEmailVerification); // verified
 
 export default router;
